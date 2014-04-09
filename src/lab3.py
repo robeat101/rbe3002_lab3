@@ -1,74 +1,31 @@
 #!/usr/bin/env python
 
 import rospy, tf
-from kobuki_msgs.msg import BumperEvent
-from nav_msgs import GridCells
-
-# Add additional imports for each of the message types used
-
+from nav_msgs.msg import GridCells
+from geometry_msgs.msg import Point
+from numpy import ma
 
 
+def  run_Astar(start, end):
+    pass #
 
-
-
-#This function sequentially calls methods to perform a trajectory.
-def executeTrajectory():
-    pass  # Delete this 'pass' once implemented
-
-
-
-
-
-
-#This function accepts two wheel velocities and a time interval.
-def spinWheels(u1, u2, time):
-    pass  # Delete this 'pass' once implemented
-
-
-
-#This function accepts a speed and a distance for the robot to move in a straight line
-def driveStraight(speed, distance):
-    pass  # Delete this 'pass' once implemented
-
-
+#Publish Explored Cells function
+def PublishGridCells(publisher, points):
     
-#Accepts an angle and makes the robot rotate around it.
-def rotate(angle):
-    pass  # Delete this 'pass' once implemented
-
-
-
-#This function works the same as rotate how ever it does not publish linear velocities.
-def driveArc(radius, speed, angle):
-    pass  # Delete this 'pass' once implemented
-
-
-
-
-
-#Odometry Callback function.
-def read_odometry(msg):
-    pass  # Delete this 'pass' once implemented
-  
-
-
-#Bumper Event Callback function
-def readBumper(msg):
-    if (msg.state == 1):
-        # What should happen when the bumper is pressed?
-        pass  # Delete this 'pass' once implemented
-
-
-
-# (Optional) If you need something to happen repeatedly at a fixed interval, write the code here.
-# Start the timer with the following line of code: 
-#   rospy.Timer(rospy.Duration(.01), timerCallback)
-def timerCallback(event):
-    pass # Delete this 'pass' once implemented
-
-
-
-
+    #Initialize gridcell
+    gridcells = GridCells()
+    gridcells.header.frame_id = 'map'
+    gridcells.cell_width = Map_Cell_Width
+    gridcells.cell_height = Map_Cell_Height
+    
+    #Iterate through list of points
+    for point in points: 
+        #Ensure z axis is 0 (2d Map)
+        point.z = 0
+        gridcells.cells.append(point)
+    
+    publisher.publish(gridcells)
+    
 
 
 
@@ -88,16 +45,20 @@ if __name__ == '__main__':
     global pose
     global odom_tf
     global odom_list
+    global Map_Cell_Width
+    global Map_Cell_Height
+
+    Map_Cell_Width = 0.2
+    Map_Cell_Height = 0.2
+    
+    
+    #Publishers: 
+    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
+    pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
+    pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
 
     
-    # Replace the elipses '...' in the following lines to set up the publishers and subscribers the lab requires
-    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher for commanding robot motion
-    #sub = rospy.Subscriber('...', ..., read_odometry, queue_size=1) # Callback function to read in robot Odometry messages
-
-    #bumper_sub = rospy.Subscriber('...', ..., readBumper, queue_size=1) # Callback function to handle bumper events
-
-    # Use this object to get the robot's Odometry 
-    odom_list = tf.TransformListener()
+    
     
     # Use this command to make the program wait for some seconds
     rospy.sleep(rospy.Duration(1, 0))
@@ -105,9 +66,16 @@ if __name__ == '__main__':
 
 
     print "Starting Lab 3"
-
-    # Make the robot do stuff...
-
+    
+    # Hardcoded start and end points: 
+    start  = Point(-1, -1, 0)
+    end    = Point(1.4, 1.4, 0)
+    PublishGridCells(pub_start, [start])
+    PublishGridCells(pub_end, [end])
+    
+    run_Astar(start, end)
+    
+    
     print "Lab 3 complete!"
-
+    rospy.spin()
 
