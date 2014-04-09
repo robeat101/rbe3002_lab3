@@ -2,6 +2,8 @@
 
 import rospy, tf
 from kobuki_msgs.msg import BumperEvent
+from nav_msgs import GridCells
+
 # Add additional imports for each of the message types used
 
 
@@ -74,21 +76,22 @@ def timerCallback(event):
 
 # This is the program's main function
 if __name__ == '__main__':
+    
     # Change this node name to include your username
-    rospy.init_node('sample_Lab_2_node')
+    rospy.init_node('rbansal_vcunha_dbourque_Lab3Node')
 
 
     # These are global variables. Write "global <variable_name>" in any other function
     #  to gain access to these global variables
     
-    global pub
+    global pub_explored
     global pose
     global odom_tf
     global odom_list
 
     
     # Replace the elipses '...' in the following lines to set up the publishers and subscribers the lab requires
-    #pub = rospy.Publisher('...', ...) # Publisher for commanding robot motion
+    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher for commanding robot motion
     #sub = rospy.Subscriber('...', ..., read_odometry, queue_size=1) # Callback function to read in robot Odometry messages
 
     #bumper_sub = rospy.Subscriber('...', ..., readBumper, queue_size=1) # Callback function to handle bumper events
@@ -101,10 +104,10 @@ if __name__ == '__main__':
 
 
 
-    print "Starting Lab 2"
+    print "Starting Lab 3"
 
     # Make the robot do stuff...
 
-    print "Lab 2 complete!"
+    print "Lab 3 complete!"
 
 
