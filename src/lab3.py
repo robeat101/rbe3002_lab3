@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy, tf
-from nav_msgs.msg import GridCells
+from nav_msgs.msg import GridCells, OccupancyGrid
 from geometry_msgs.msg import Point, PoseWithCovarianceStamped, PoseStamped
 from numpy import ma
 
@@ -23,15 +23,22 @@ def AStar_search(start, end):
     
     #Add Start to frontier
     FrontierSet.add(start)
+    add_to_FrontierSet_flag = 0 #initialize add to FrontierSet flag
+    add_to_ExpandedSet_flag = 0 #initialize add to ExpandedSet flag
     while FrontierSet:
+        print "Frontier Set:"
         PublishGridCells(pub_frontier, FrontierSet)
+        print "Expanded Set:"
         PublishGridCells(pub_explored, ExpandedSet)
+        print "start:"
         PublishGridCells(pub_start, [start])
+        print "end:"
         PublishGridCells(pub_end, [end])
-        rospy.sleep(rospy.Duration(0.5, 0))
+        rospy.sleep(rospy.Duration(0.1, 0))
+
         #find the node in FrontierSet with the minimum heuristic value
         current = min(FrontierSet, key=lambda o:o.g + o.h)
-        
+
         #If the goal is being expanded
         if current.poseEqual(end):
             #Construct path
@@ -44,40 +51,107 @@ def AStar_search(start, end):
             #Return path (less one garbage node that is appended)
             return path[::-1]
         
-        #Else, move node from frontier to explored
+        #Else, move node from frontier to explored set
         FrontierSet.remove(current)
-        ExpandedSet.add(current)
+        if not ExpandedSet:
+            ExpandedSet.add(current)
+            print "ADDED TO EMPTY EXPANDEDSET"
+        else:
+            add_to_ExpandedSet_flag = 1
+            for node in ExpandedSet:
+                if ((current.point.x != node.point.x) & (current.point.y != node.point.y)):
+                    #skip if has been set to 0 already
+                    if add_to_ExpandedSet_flag == 0:
+                        continue
+                    #set to 1 since new expanded node
+                    else:
+                        add_to_ExpandedSet_flag = 1
+                #set to 0 if not a new expanded 
+                else:
+                    add_to_ExpandedSet_flag = 0
+        if add_to_ExpandedSet_flag == 1:
+            print "ADDED TO EXPANDEDSET"
+            ExpandedSet.add(current)
+            add_to_ExpandedSet_flag = 0
         
         #Check for possible 8-directional moves
         for node in WhereToGo(current):
+            wtg_node = node
+            add_to_FrontierSet_flag = 1
+            in_ExpandedSet_flag = 1
             #Ignore if node is expanded
-            if node in ExpandedSet:
-                continue
-            #Try to update cost of traveling to node if already exists
-            if node in FrontierSet:
-                new_g = current.g + move_cost(current,node)
-                if node.g > new_g:
-                    node.g = new_g
-                    node.parent = current
-            #Add to frontier and update costs and heuristic values
-            else:
-                node.g = current.g + move_cost(current, node)
-                node.h = heuristic(node, end)
-                node.parent = current
-                FrontierSet.add(node)
+            for node in ExpandedSet:
+                if ((wtg_node.point.x == node.point.x) & (wtg_node.point.y == node.point.y)):
+                    print "NODE IN EXPANDEDSET"
+                    in_ExpandedSet_flag = 0
+            if in_ExpandedSet_flag == 1:
+                "ARE WE HERE?"
+                # if empty frontier (at beginning especially)
+                if not FrontierSet:
+                    print "frontier set is empty"
+                    FrontierSet.add(wtg_node)
+                else:
+                    #Try to update cost of traveling to node if already exists
+                    for node in FrontierSet:
+                        if ((wtg_node.point.x == node.point.x) & (wtg_node.point.y == node.point.y)):
+                            new_g = current.g + move_cost(current,wtg_node)
+                            if node.g > new_g:
+                                node.g = new_g
+                                node.parent = current
+                                add_to_FrontierSet_flag = 0
+                        #Add to frontier and update costs and heuristic values
+                        else:
+                            node.g = current.g + move_cost(current, wtg_node)
+                            node.h = heuristic(wtg_node, end)
+                            node.parent = current
+                            if add_to_FrontierSet_flag == 0:
+                                continue
+                if add_to_FrontierSet_flag == 1:
+                    FrontierSet.add(wtg_node)
+                    print "NODE ADDED TO FRONTIERSET"
+			
     return None
 
+def map_function(msg):
+	global map_data
+	map_data = msg.data
+
 def getMapIndex(node):
-    return (((node.point.y +3) * 5) *37) + (node.point.x +3) * 5) 
+    return int(round(((((node.point.y +3) * 5) *37) + ((node.point.x +3) * 5)),0))
 
 #Takes in current node, returns list of possible directional movements
 def WhereToGo(node):
     possibleNodes = []
+
     #Hacky code begins
-    North = AStarNode(node.point.x, node.point.y+0.2)
-    #if map[getMapIndex(North)] != 100
-    #    possibleNodes.append(North)
-    
+    North = AStarNode(round(node.point.x,1), round(node.point.y+0.2,1))
+    NorthEast = AStarNode(round(node.point.x+0.2,1), round(node.point.y+0.2,1))
+    East = AStarNode(round(node.point.x+0.2,1), node.point.y)
+    SouthEast = AStarNode(round(node.point.x+0.2,1), round(node.point.y-0.2,1))
+    South = AStarNode(node.point.x, round(node.point.y-0.2,1))
+    SouthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y-0.2,1))
+    West = AStarNode(round(node.point.x-0.2,1), node.point.y)
+    NorthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y+0.2,1))
+	
+    print(North)
+
+    if map_data[getMapIndex(North)] != 100:
+        possibleNodes.append(North)
+    if map_data[getMapIndex(NorthEast)] != 100:
+        possibleNodes.append(NorthEast)
+    if map_data[getMapIndex(East)] != 100:
+        possibleNodes.append(East)
+    if map_data[getMapIndex(SouthEast)] != 100:
+        possibleNodes.append(SouthEast)
+    if map_data[getMapIndex(South)] != 100:
+        possibleNodes.append(South)
+    if map_data[getMapIndex(SouthWest)] != 100:
+        possibleNodes.append(SouthWest)
+    if map_data[getMapIndex(West)] != 100:
+        possibleNodes.append(West)
+    if map_data[getMapIndex(NorthWest)] != 100:
+        possibleNodes.append(NorthWest)
+
     return possibleNodes
 
 def move_cost(node, next):
@@ -116,6 +190,7 @@ def PublishGridCells(publisher, nodes):
         
     print publisher
     publisher.publish(gridcells)
+    rospy.sleep(rospy.Duration(.1, 0))
     
 
 #####################################3
@@ -222,6 +297,7 @@ if __name__ == '__main__':
     global odom_list
     global Map_Cell_Width
     global Map_Cell_Height
+    global map_data
     
     global start_pos_x
     global start_pos_y
@@ -250,7 +326,7 @@ if __name__ == '__main__':
     #Subscribers:
     sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
     sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
-    
+    sub = rospy.Subscriber('/map', OccupancyGrid, map_function, queue_size=1)
     
     # Use this command to make the program wait for some seconds
     rospy.sleep(rospy.Duration(1, 0))
