@@ -8,7 +8,7 @@ from numpy import ma
 def heuristic(current, end):
     x = (current.point.x - end.point.x)**2
     y = (current.point.y - end.point.y)**2
-    return (x + y)**0.5
+    return round((x + y)**0.5, 2)
 
 #takes in Start and End AStar nodes. 
 def AStar_search(start, end):
@@ -24,7 +24,10 @@ def AStar_search(start, end):
     #Add Start to frontier
     FrontierSet.add(start)
     while FrontierSet:
-        PublishGridCells(pub_explored, FrontierSet)
+        PublishGridCells(pub_frontier, FrontierSet)
+        PublishGridCells(pub_explored, ExpandedSet)
+        PublishGridCells(pub_start, [start])
+        PublishGridCells(pub_end, [end])
         rospy.sleep(rospy.Duration(0.5, 0))
         #find the node in FrontierSet with the minimum heuristic value
         current = min(FrontierSet, key=lambda o:o.g + o.h)
@@ -64,13 +67,22 @@ def AStar_search(start, end):
                 FrontierSet.add(node)
     return None
 
+def getMapIndex(node):
+    return (((node.point.y +3) * 5) *37) + (node.point.x +3) * 5) 
+
+#Takes in current node, returns list of possible directional movements
 def WhereToGo(node):
-    newNode = AStarNode(node.point.x+0.2, node.point.y)
-    return [newNode]
+    possibleNodes = []
+    #Hacky code begins
+    North = AStarNode(node.point.x, node.point.y+0.2)
+    #if map[getMapIndex(North)] != 100
+    #    possibleNodes.append(North)
+    
+    return possibleNodes
 
 def move_cost(node, next):
     diagonal = abs(node.point.x - next.point.x) == .2 and abs(node.point.y - next.point.y) == .2
-    return (.2*.2 + .2 *.2)**0.5 if diagonal else .2
+    return round( (.2*.2 + .2 *.2)**0.5 if diagonal else .2 , 2)
 
 class AStarNode():
     
@@ -231,6 +243,7 @@ if __name__ == '__main__':
         
     #Publishers: 
     pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
+    pub_frontier = rospy.Publisher('/frontier', GridCells) # Publisher explored GridCells
     pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
     pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
         
