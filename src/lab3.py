@@ -2,7 +2,7 @@
 
 import rospy, tf
 from nav_msgs.msg import GridCells
-from geometry_msgs.msg import Point, PoseWithCovarianceStamped
+from geometry_msgs.msg import Point, PoseWithCovarianceStamped, PoseStamped
 from numpy import ma
 
 def heuristic(current, end):
@@ -111,13 +111,26 @@ def set_initial_pose (msg):
 	#global start_w
 
 	#set initial pose values
-	start_pos_x = msg.pose.pose.position.x
-	start_pos_y = msg.pose.pose.position.y
-	start_pos_z = msg.pose.pose.position.z
-	start_orient_x = msg.pose.pose.orientation.x
-	start_orient_y = msg.pose.pose.orientation.y
-	start_orient_z = msg.pose.pose.orientation.z
-	start_w = msg.pose.pose.orientation.w
+	if msg.pose.pose.position.x % .2 < .1:
+		start_pos_x = (msg.pose.pose.position.x / .2)
+	else:
+		start_pos_x = (msg.pose.pose.position.x / .2) + .2
+
+	if msg.pose.pose.position.y % .2 < .1:
+		start_pos_y = (msg.pose.pose.position.y / .2)
+	else:
+		start_pos_y = (msg.pose.pose.position.y / .2) + .2
+
+	#if msg.pose.pose.position.x % .2 < .1:
+	#	start_pos_x = (msg.pose.pose.position.x / .2)
+	#else:
+	#	start_pos_x = (msg.pose.pose.position.x / .2) + .2
+
+	#we have not checked scaling or anything for these:
+	#start_orient_x = msg.pose.pose.orientation.x
+	#start_orient_y = msg.pose.pose.orientation.y
+	#start_orient_z = msg.pose.pose.orientation.z
+	#start_w = msg.pose.pose.orientation.w
 	
 	#print initial pose values
 	print ""
@@ -125,6 +138,8 @@ def set_initial_pose (msg):
 	print "start_pos_x = ", start_pos_x
 	print "start_pos_y = ", start_pos_y
 	#print "start_pos_z = ", start_pos_z
+
+	#we have not checked scaling or anything for these:
 	#print "start_orient_x = ", start_orient_x
 	#print "start_orient_y = ", start_orient_y
 	#print "start_orient_z = ", start_orient_z
@@ -142,24 +157,28 @@ def set_goal_pose (msg):
 	#global goal_w
 
 	#set goal pose values
-	goal_pos_x = msg.pose.pose.position.x
-	goal_pos_y = msg.pose.pose.position.y
-	goal_pos_z = msg.pose.pose.position.z
-	goal_orient_x = msg.pose.pose.orientation.x
-	goal_orient_y = msg.pose.pose.orientation.y
-	goal_orient_z = msg.pose.pose.orientation.z
-	goal_w = msg.pose.pose.orientation.w
+	goal_pos_x = msg.pose.position.x
+	goal_pos_y = msg.pose.position.y
+	#goal_pos_z = msg.pose.position.z
+	
+	#we have not checked scaling or anything for these:
+	#goal_orient_x = msg.pose.orientation.x
+	#goal_orient_y = msg.pose.orientation.y
+	#goal_orient_z = msg.pose.orientation.z
+	#goal_w = msg.pose.orientation.w
 	
 	#print goal pose values
 	print ""
 	print "Goal Pose Values:"
-	print "start_pos_x = ", start_pos_x
-	print "start_pos_y = ", start_pos_y
-	#print "start_pos_z = ", start_pos_z
-	#print "start_orient_x = ", start_orient_x
-	#print "start_orient_y = ", start_orient_y
-	#print "start_orient_z = ", start_orient_z
-	#print "start_w = ", start_w
+	print "goal_pos_x = ", goal_pos_x
+	print "goal_pos_y = ", goal_pos_y
+	#print "goal_pos_z = ", goal_pos_z
+
+	#we have not checked scaling or anything for these:
+	#print "goal_orient_x = ", goal_orient_x
+	#print "goal_orient_y = ", goal_orient_y
+	#print "goal_orient_z = ", goal_orient_z
+	#print "goal_w = ", goal_w
 
 
 
@@ -168,50 +187,57 @@ def set_goal_pose (msg):
 if __name__ == '__main__':
 
     # Change this node name to include your username
-    rospy.init_node('rbansal_vcunha_dbourque_Lab3Node')
+	rospy.init_node('rbansal_vcunha_dbourque_Lab3Node')
     
     
     # These are global variables. Write "global <variable_name>" in any other function
     #  to gain access to these global variables
     
-    global pub_explored
-    global pose
-    global odom_tf
-    global odom_list
-    global Map_Cell_Width
-    global Map_Cell_Height
+	global pub_explored
+	global pose
+	global odom_tf
+	global odom_list
+	global Map_Cell_Width
+	global Map_Cell_Height
+
+	global start_pos_x
+	global start_pos_y
+	#global start_pos_z
+	#global start_orient_x
+	#global start_orient_y
+	#global start_orient_z
+	#globalstart_w
+	global goal_pos_x
+	global goal_pos_y
+	#global goal_pos_z
+	#global goal_orient_x
+	#global goal_orient_y
+	#global goal_orient_z
+	#global goal_w
+
+	Map_Cell_Width = 0.2
+	Map_Cell_Height = 0.2
     
-    global start_pos_x
-    global start_pos_y
-    #global start_pos_z
-    #global start_orient_x
-    #global start_orient_y
-    #global start_orient_z
-    #global start_w
     
-    Map_Cell_Width = 0.2
-    Map_Cell_Height = 0.2
-    
-    
-    #Publishers: 
-    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
-    pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
-    pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
+	#Publishers: 
+	pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
+	pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
+	pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
     
     #Subscribers:
-    sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
+	sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
 	sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
 	print "Starting Lab 3"
-    
-    # Hardcoded start and end points: 
-    start  = AStarNode(-1, -1)
-    end    = AStarNode(1.4, -1)
-    PublishGridCells(pub_start, [start])
-    PublishGridCells(pub_end, [end])
-    
+
+	# Hardcoded start and end points: 
+	start  = AStarNode(-1, -1)
+	end    = AStarNode(1.4, -1)
+	PublishGridCells(pub_start, [start])
+	PublishGridCells(pub_end, [end])
+ 
     #AStar_search(start, end)
     
     
-    print "Lab 3 complete!"
-    rospy.spin()
-
+	print "Lab 3 complete!"
+	rospy.spin()
+S
