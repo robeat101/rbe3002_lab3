@@ -10,7 +10,7 @@ from __builtin__ import pow
 def heuristic(current, end):
     x = pow((current.point.x - end.point.x), 2)
     y = pow((current.point.y - end.point.y), 2)
-    h = sqrt(x+y)-0.1
+    h = sqrt(x+y)
     return h
 
 #takes in Start and End AStar nodes.
@@ -50,7 +50,8 @@ def AStar_search(start, end):
         
         #Else, move node from frontier to explored
         FrontierSet.remove(current)
-        ExpandedSet.add(current)
+        if not (current.poseEqual(start) and current.poseEqual(end)):
+            ExpandedSet.add(current)
         
         #Check for possible 8-directional moves
         repeatedNode_flag = False
@@ -72,10 +73,13 @@ def AStar_search(start, end):
             for frontier in FrontierSet:
                 if node.poseEqual(frontier) and repeatedNode_flag == False:
                     new_g = current.g + move_cost(current,node)
+                    print str(new_g) + '  ' + str(node.g)
                     if node.g > new_g:
                         node.g = new_g
                         node.h = heuristic(node, end)
                         node.parent = current
+                        FrontierSet.remove(frontier)
+                        FrontierSet.add(node)
                     somethingWasUpdatedFlag = True
                     break
                 if somethingWasUpdatedFlag == True:
@@ -104,13 +108,28 @@ def WhereToGo(node):
 
     #Hacky code begins
     North = AStarNode(round(node.point.x,1), round(node.point.y+0.2,1))
+    North.g = node.g + 0.2
+    
     NorthEast = AStarNode(round(node.point.x+0.2,1), round(node.point.y+0.2,1))
+    NorthEast.g = node.g + 0.29
+    
     East = AStarNode(round(node.point.x+0.2,1), node.point.y)
+    East.g = node.g + 0.2
+    
     SouthEast = AStarNode(round(node.point.x+0.2,1), round(node.point.y-0.2,1))
+    SouthEast.g = node.g + 0.29
+    
     South = AStarNode(node.point.x, round(node.point.y-0.2,1))
+    South.g = node.g + 0.2
+    
     SouthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y-0.2,1))
+    SouthWest.g = node.g + 0.29
+   
     West = AStarNode(round(node.point.x-0.2,1), node.point.y)
+    West.g = node.g + 0.2
+    
     NorthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y+0.2,1))
+    NorthWest.g = node.g + 0.29
 
     if map_data[getMapIndex(North)] != 100:
         possibleNodes.append(North)
@@ -133,11 +152,9 @@ def WhereToGo(node):
 
 def move_cost(node, next):
     diagonal = round(abs(node.point.x - next.point.x),1) == .2 
-    print round(abs(node.point.x - next.point.x),1)
-    print round(abs(node.point.y - next.point.y),1)
     diagonal = diagonal and round(abs(node.point.y - next.point.y),1) == .2
     if diagonal:
-        return 0.28
+        return 0.29
     else:
         return 0.2
 
@@ -170,7 +187,7 @@ def PublishGridCells(publisher, nodes):
         point.z = node.point.z = 0
         gridcells.cells.append(point)        
     publisher.publish(gridcells)
-    rospy.sleep(rospy.Duration(0.1,0))
+    rospy.sleep(rospy.Duration(0.01,0))
     
 
 #####################################3
@@ -314,8 +331,8 @@ if __name__ == '__main__':
     
     print "Starting Lab 3"
     # Hardcoded start and end points: 
-    start  = AStarNode(-1, -1)
-    end    = AStarNode(1.4, -1)
+    start  = AStarNode(-1, -1.6)
+    end    = AStarNode(1.4, 2.2)
     PublishGridCells(pub_start, [start])
     PublishGridCells(pub_end, [end])
     PublishGridCells(pub_path, [])
