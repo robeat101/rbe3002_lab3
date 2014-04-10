@@ -164,7 +164,7 @@ def move_cost(node, next):
     diagonal = round(abs(node.point.x - next.point.x),1) == .2 
     diagonal = diagonal and round(abs(node.point.y - next.point.y),1) == .2
     if diagonal:
-        return 0.29
+        return 0.3
     else:
         return 0.2
 
@@ -180,8 +180,10 @@ class AStarNode():
         self.step_direction = direction.start
         
     def poseEqual(self, node):
-        return node.point.x == self.point.x and node.point.y == self.point.y 
+        return_val = round(node.point.x, 1) == round(self.point.x,1)
+        return_val = return_val and round(node.point.y, 1) == round(self.point.y,1) 
     
+        return return_val
 
 class Direction():
     def __init__(self):
@@ -229,7 +231,7 @@ def PublishGridCells(publisher, nodes):
         point.z = node.point.z = 0
         gridcells.cells.append(point)        
     publisher.publish(gridcells)
-    rospy.sleep(rospy.Duration(0.05,0))
+    rospy.sleep(rospy.Duration(0.02,0))
 
 def run_Astar():
     
@@ -250,7 +252,6 @@ def run_Astar():
     
     print "Showing Waypoints"
     waypoints = getWaypoints(path)
-    rospy.sleep(rospy.Duration(1,0))
     PublishGridCells(pub_path, waypoints)
 
 #####################################3
@@ -260,6 +261,7 @@ def set_initial_pose (msg):
     global start_pos_x
     global start_pos_y
     global start_pos_flag
+    global end_pos_flag
     #global start_pos_z
     #global start_orient_x
     #global start_orient_y
@@ -308,10 +310,15 @@ def set_initial_pose (msg):
     #print "start_orient_y = ", start_orient_y
     #print "start_orient_z = ", start_orient_z
     #print "start_w = ", start_w
+    if(start_pos_flag == True and end_pos_flag == True):
+           print 'running Astar'
+           run_Astar();
+           start_pos_flag = False
+           end_pos_flag = False
 
 # set and print goalpose
 def set_goal_pose (msg):
-    
+    global start_pos_flag
     global end_pos_flag
     end_pos_x = msg.pose.position.x
     end_pos_y = msg.pose.position.y
@@ -334,6 +341,11 @@ def set_goal_pose (msg):
     print "end_pos_y = ", end.point.y 
     
     end_pos_flag = True
+    if(start_pos_flag == True and end_pos_flag == True):
+           print 'running Astar'
+           run_Astar();
+           start_pos_flag = False
+           end_pos_flag = False
     
 
 #######################################
@@ -374,6 +386,9 @@ if __name__ == '__main__':
     #global goal_orient_y
     #global goal_orient_z
     #global goal_w
+    start_pos_flag = False
+    end_pos_flag = False
+    
     
     Map_Cell_Width = 0.2
     Map_Cell_Height = 0.2
@@ -390,20 +405,14 @@ if __name__ == '__main__':
     sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
     sub = rospy.Subscriber('/map', OccupancyGrid, map_function, queue_size=1)
     
-    start_pos_flag = False
-    end_pos_flag = False
+    
     # Use this command to make the program wait for some seconds
     rospy.sleep(rospy.Duration(1, 0))
     
     print "Starting Lab 3"
     start = AStarNode(-1,-1.8)
     end = AStarNode(1,1.8);
-    while(1):
-        if(start_pos_flag == True and end_pos_flag == True):
-            print 'running Astar'
-            run_Astar();
-            start_pos_flag = False
-            end_pos_flag = False
+    rospy.spin()
             
     print "Lab Complete"
 
