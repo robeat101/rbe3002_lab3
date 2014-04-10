@@ -99,7 +99,7 @@ def PublishGridCells(publisher, nodes):
     
 
 #####################################3
-# print initialpose
+# set and print initialpose
 def set_initial_pose (msg):
 	
 	global start_pos_x
@@ -121,7 +121,7 @@ def set_initial_pose (msg):
 	
 	#print initial pose values
 	print ""
-	print "Initial Values:"
+	print "Initial Pose Values:"
 	print "start_pos_x = ", start_pos_x
 	print "start_pos_y = ", start_pos_y
 	#print "start_pos_z = ", start_pos_z
@@ -129,6 +129,38 @@ def set_initial_pose (msg):
 	#print "start_orient_y = ", start_orient_y
 	#print "start_orient_z = ", start_orient_z
 	#print "start_w = ", start_w
+
+# set and print goalpose
+def set_goal_pose (msg):
+
+	global goal_pos_x
+	global goal_pos_y
+	#global goal_pos_z
+	#global goal_orient_x
+	#global goal_orient_y
+	#global goal_orient_z
+	#global goal_w
+
+	#set goal pose values
+	goal_pos_x = msg.pose.pose.position.x
+	goal_pos_y = msg.pose.pose.position.y
+	goal_pos_z = msg.pose.pose.position.z
+	goal_orient_x = msg.pose.pose.orientation.x
+	goal_orient_y = msg.pose.pose.orientation.y
+	goal_orient_z = msg.pose.pose.orientation.z
+	goal_w = msg.pose.pose.orientation.w
+	
+	#print goal pose values
+	print ""
+	print "Goal Pose Values:"
+	print "start_pos_x = ", start_pos_x
+	print "start_pos_y = ", start_pos_y
+	#print "start_pos_z = ", start_pos_z
+	#print "start_orient_x = ", start_orient_x
+	#print "start_orient_y = ", start_orient_y
+	#print "start_orient_z = ", start_orient_z
+	#print "start_w = ", start_w
+
 
 
 #######################################
@@ -168,7 +200,8 @@ if __name__ == '__main__':
     
     #Subscribers:
     sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
-    print "Starting Lab 3"
+	sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
+	print "Starting Lab 3"
     
     # Hardcoded start and end points: 
     start  = AStarNode(-1, -1)
@@ -176,7 +209,7 @@ if __name__ == '__main__':
     PublishGridCells(pub_start, [start])
     PublishGridCells(pub_end, [end])
     
-    AStar_search(start, end)
+    #AStar_search(start, end)
     
     
     print "Lab 3 complete!"
