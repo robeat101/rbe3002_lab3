@@ -4,13 +4,16 @@ import rospy, tf
 from nav_msgs.msg import GridCells, OccupancyGrid
 from geometry_msgs.msg import Point, PoseWithCovarianceStamped, PoseStamped
 from numpy import ma
+from math import sqrt
+from __builtin__ import pow
 
 def heuristic(current, end):
-    x = (current.point.x - end.point.x)**2
-    y = (current.point.y - end.point.y)**2
-    return round((x + y)**0.5, 2)
+    x = pow((current.point.x - end.point.x), 2)
+    y = pow((current.point.y - end.point.y), 2)
+    h = sqrt(x+y)-0.1
+    return h
 
-#takes in Start and End AStar nodes. 
+#takes in Start and End AStar nodes.
 def AStar_search(start, end):
     #Set Start and End values
     start.g = 0
@@ -23,22 +26,16 @@ def AStar_search(start, end):
     
     #Add Start to frontier
     FrontierSet.add(start)
-    add_to_FrontierSet_flag = 0 #initialize add to FrontierSet flag
-    add_to_ExpandedSet_flag = 0 #initialize add to ExpandedSet flag
+    
     while FrontierSet:
-        print "Frontier Set:"
         PublishGridCells(pub_frontier, FrontierSet)
-        print "Expanded Set:"
         PublishGridCells(pub_explored, ExpandedSet)
-        print "start:"
         PublishGridCells(pub_start, [start])
-        print "end:"
         PublishGridCells(pub_end, [end])
-        rospy.sleep(rospy.Duration(0.1, 0))
-
+        
         #find the node in FrontierSet with the minimum heuristic value
         current = min(FrontierSet, key=lambda o:o.g + o.h)
-
+        
         #If the goal is being expanded
         if current.poseEqual(end):
             #Construct path
@@ -51,66 +48,48 @@ def AStar_search(start, end):
             #Return path (less one garbage node that is appended)
             return path[::-1]
         
-        #Else, move node from frontier to explored set
+        #Else, move node from frontier to explored
         FrontierSet.remove(current)
-        if not ExpandedSet:
-            ExpandedSet.add(current)
-            print "ADDED TO EMPTY EXPANDEDSET"
-        else:
-            add_to_ExpandedSet_flag = 1
-            for node in ExpandedSet:
-                if ((current.point.x != node.point.x) & (current.point.y != node.point.y)):
-                    #skip if has been set to 0 already
-                    if add_to_ExpandedSet_flag == 0:
-                        continue
-                    #set to 1 since new expanded node
-                    else:
-                        add_to_ExpandedSet_flag = 1
-                #set to 0 if not a new expanded 
-                else:
-                    add_to_ExpandedSet_flag = 0
-        if add_to_ExpandedSet_flag == 1:
-            print "ADDED TO EXPANDEDSET"
-            ExpandedSet.add(current)
-            add_to_ExpandedSet_flag = 0
+        ExpandedSet.add(current)
         
         #Check for possible 8-directional moves
+        repeatedNode_flag = False
+        somethingWasUpdatedFlag = False
         for node in WhereToGo(current):
-            wtg_node = node
-            add_to_FrontierSet_flag = 1
-            in_ExpandedSet_flag = 1
             #Ignore if node is expanded
-            for node in ExpandedSet:
-                if ((wtg_node.point.x == node.point.x) & (wtg_node.point.y == node.point.y)):
-                    print "NODE IN EXPANDEDSET"
-                    in_ExpandedSet_flag = 0
-            if in_ExpandedSet_flag == 1:
-                "ARE WE HERE?"
-                # if empty frontier (at beginning especially)
-                if not FrontierSet:
-                    print "frontier set is empty"
-                    FrontierSet.add(wtg_node)
-                else:
-                    #Try to update cost of traveling to node if already exists
-                    for node in FrontierSet:
-                        if ((wtg_node.point.x == node.point.x) & (wtg_node.point.y == node.point.y)):
-                            new_g = current.g + move_cost(current,wtg_node)
-                            if node.g > new_g:
-                                node.g = new_g
-                                node.parent = current
-                                add_to_FrontierSet_flag = 0
-                        #Add to frontier and update costs and heuristic values
-                        else:
-                            node.g = current.g + move_cost(current, wtg_node)
-                            node.h = heuristic(wtg_node, end)
-                            node.parent = current
-                            if add_to_FrontierSet_flag == 0:
-                                continue
-                if add_to_FrontierSet_flag == 1:
-                    FrontierSet.add(wtg_node)
-                    print "NODE ADDED TO FRONTIERSET"
-			
+            for expanded in ExpandedSet:
+                if node.poseEqual(expanded):
+                    new_g = current.g + move_cost(current,node)
+                    if node.g > new_g:
+                        node.g = new_g
+                        node.h = heuristic(node, end)
+                        node.parent = current
+                    repeatedNode_flag = True
+                    somethingWasUpdatedFlag = True
+                    break   
+            
+            #Try to update cost of traveling to node if already exists
+            for frontier in FrontierSet:
+                if node.poseEqual(frontier) and repeatedNode_flag == False:
+                    new_g = current.g + move_cost(current,node)
+                    if node.g > new_g:
+                        node.g = new_g
+                        node.h = heuristic(node, end)
+                        node.parent = current
+                    somethingWasUpdatedFlag = True
+                    break
+                if somethingWasUpdatedFlag == True:
+                    break
+            #Add to frontier and update costs and heuristic values
+            if somethingWasUpdatedFlag == False:
+                node.g = current.g + move_cost(current, node)
+                node.h = heuristic(node, end)
+                node.parent = current
+                FrontierSet.add(node)
+            repeatedNode_flag = False
+            somethingWasUpdatedFlag = False
     return None
+
 
 def map_function(msg):
 	global map_data
@@ -132,8 +111,6 @@ def WhereToGo(node):
     SouthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y-0.2,1))
     West = AStarNode(round(node.point.x-0.2,1), node.point.y)
     NorthWest = AStarNode(round(node.point.x-0.2,1), round(node.point.y+0.2,1))
-	
-    print(North)
 
     if map_data[getMapIndex(North)] != 100:
         possibleNodes.append(North)
@@ -155,8 +132,14 @@ def WhereToGo(node):
     return possibleNodes
 
 def move_cost(node, next):
-    diagonal = abs(node.point.x - next.point.x) == .2 and abs(node.point.y - next.point.y) == .2
-    return round( (.2*.2 + .2 *.2)**0.5 if diagonal else .2 , 2)
+    diagonal = round(abs(node.point.x - next.point.x),1) == .2 
+    print round(abs(node.point.x - next.point.x),1)
+    print round(abs(node.point.y - next.point.y),1)
+    diagonal = diagonal and round(abs(node.point.y - next.point.y),1) == .2
+    if diagonal:
+        return 0.28
+    else:
+        return 0.2
 
 class AStarNode():
     
@@ -180,17 +163,14 @@ def PublishGridCells(publisher, nodes):
 
     #Iterate through list of nodes
     for node in nodes: 
-        print 'Iterating ' + str(node.point.x) + str(node.point.y)
         point = Point()
         point.x = node.point.x
         point.y = node.point.y
         #Ensure z axis is 0 (2d Map)
         point.z = node.point.z = 0
-        gridcells.cells.append(point)
-        
-    print publisher
+        gridcells.cells.append(point)        
     publisher.publish(gridcells)
-    rospy.sleep(rospy.Duration(.1, 0))
+    rospy.sleep(rospy.Duration(0.1,0))
     
 
 #####################################3
@@ -318,11 +298,12 @@ if __name__ == '__main__':
     Map_Cell_Height = 0.2
         
     #Publishers: 
-    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
-    pub_frontier = rospy.Publisher('/frontier', GridCells) # Publisher explored GridCells
     pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
     pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
-        
+    pub_path     = rospy.Publisher('/path' , GridCells) # Publisher for Final Path
+    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
+    pub_frontier = rospy.Publisher('/frontier', GridCells) # Publisher explored GridCells
+       
     #Subscribers:
     sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
     sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
@@ -337,8 +318,14 @@ if __name__ == '__main__':
     end    = AStarNode(1.4, -1)
     PublishGridCells(pub_start, [start])
     PublishGridCells(pub_end, [end])
+    PublishGridCells(pub_path, [])
     
-    AStar_search(start, end)
+    # Use this command to make the program wait for some seconds
+    rospy.sleep(rospy.Duration(1, 0))
+    #PublishGridCells(pub_frontier,  WhereToGo(start))
+    path = AStar_search(start, end)
+    print path[len(path) - 1].g
+    PublishGridCells(pub_path, path)
     
     
     print "Lab 3 complete!"
