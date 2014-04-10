@@ -25,12 +25,12 @@ def AStar_search(start, end):
     FrontierSet.add(start)
     while FrontierSet:
         PublishGridCells(pub_explored, FrontierSet)
+        rospy.sleep(rospy.Duration(0.5, 0))
         #find the node in FrontierSet with the minimum heuristic value
         current = min(FrontierSet, key=lambda o:o.g + o.h)
         
         #If the goal is being expanded
         if current.poseEqual(end):
-            print 'poseisequal to end'
             #Construct path
             path = []
             while current.parent:
@@ -86,7 +86,6 @@ class AStarNode():
    
 #Publish Explored Cells function
 def PublishGridCells(publisher, nodes):
-    
     #Initialize gridcell
     gridcells = GridCells()
     gridcells.header.frame_id = 'map'
@@ -102,6 +101,8 @@ def PublishGridCells(publisher, nodes):
         #Ensure z axis is 0 (2d Map)
         point.z = node.point.z = 0
         gridcells.cells.append(point)
+        
+    print publisher
     publisher.publish(gridcells)
     
 
@@ -200,6 +201,9 @@ if __name__ == '__main__':
     # These are global variables. Write "global <variable_name>" in any other function
     #  to gain access to these global variables
     
+    global publisher
+    global pub_start
+    global pub_end
     global pub_explored
     global pose
     global odom_tf
@@ -233,8 +237,12 @@ if __name__ == '__main__':
     #Subscribers:
     sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
     sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
-    print "Starting Lab 3"
     
+    
+    # Use this command to make the program wait for some seconds
+    rospy.sleep(rospy.Duration(1, 0))
+    
+    print "Starting Lab 3"
     # Hardcoded start and end points: 
     start  = AStarNode(-1, -1)
     end    = AStarNode(1.4, -1)
