@@ -5,54 +5,83 @@ from nav_msgs.msg import GridCells
 from geometry_msgs.msg import Point
 from numpy import ma
 
-def heuristic(current_point, end_point):
-    x = (current_point.x - end_point.x)**2
-    y = (current_point.y - end_point.y)**2
+def heuristic(current, end):
+    x = (current.point.x - end.point.x)**2
+    y = (current.point.y - end.point.y)**2
     return (x + y)**0.5
 
-
-def run_Astar(start, end):
-    pass
-
-def search(start, end):
-    openset = set()
-    closedset = set()
-    current = start
-    openset.add(current)
-    while openset:
-        current = min(openset, key=lambda o:o.g + o.h)
+#takes in Start and End AStar nodes. 
+def AStar_search(start, end):
+    #Set Start and End values
+    start.g = 0
+    start.h = heuristic(start, end)
+    
+    #FrontierSet is the set of nodes to be opened, i.e. Frontier
+    FrontierSet = set()
+    #ExpandedSet is the set of nodes already expanded
+    ExpandedSet = set()
+    
+    #Add Start to frontier
+    FrontierSet.add(start)
+    while FrontierSet:
+        PublishGridCells(pub_explored, FrontierSet)
+        #find the node in FrontierSet with the minimum heuristic value
+        current = min(FrontierSet, key=lambda o:o.g + o.h)
+        
+        #If the goal is being expanded
         if current == end:
+            #Construct path
             path = []
             while current.parent:
                 path.append(current)
                 current = current.parent
                 path.append(current)
-                return path[::-1]
-        openset.remove(current)
-        closedset.add(current)
-        for node in self.graph[current]:
-            if node in closedset:
+            
+            #Return path (less one garbage node that is appended)
+            return path[::-1]
+        
+        #Else, move node from frontier to explored
+        FrontierSet.remove(current)
+        ExpandedSet.add(current)
+        
+        #Check for possible 8-directional moves
+        for node in WhereToGo(current):
+            #Ignore if node is expanded
+            if node in ExpandedSet:
                 continue
-            if node in openset:
-                new_g = current.g + current.move_cost(node)
+            #Try to update cost of traveling to node if already exists
+            if node in FrontierSet:
+                new_g = current.g + move_cost(current,node)
                 if node.g > new_g:
                     node.g = new_g
                     node.parent = current
+            #Add to frontier and update costs and heuristic values
             else:
-                node.g = current.g + current.move_cost(node)
-                node.h = self.heuristic(node, start, end)
+                node.g = current.g + move_cost(current, node)
+                node.h = heuristic(node, end)
                 node.parent = current
-                openset.add(node)
+                FrontierSet.add(node)
     return None
- 
-class AStarNode(object):
-    def __init__(self):
+
+def WhereToGo(node):
+    newNode = AStarNode(node.point.x+0.2, node.point.y)
+    return [newNode]
+
+def move_cost(node, next):
+    diagonal = abs(node.point.x - next.point.x) == .2 and abs(node.point.y - next.point.y) == .2
+    return (.2*.2 + .2 *.2)**0.5 if diagonal else .2
+
+class AStarNode():
+    
+    def __init__(self, x, y):
+        self.point = Point()
+        self.point.x, self.point.y = x, y
         self.g = 0
         self.h = 0
         self.parent = None
-
+   
 #Publish Explored Cells function
-def PublishGridCells(publisher, points):
+def PublishGridCells(publisher, nodes):
     
     #Initialize gridcell
     gridcells = GridCells()
@@ -60,11 +89,11 @@ def PublishGridCells(publisher, points):
     gridcells.cell_width = Map_Cell_Width
     gridcells.cell_height = Map_Cell_Height
     
-    #Iterate through list of points
-    for point in points: 
+    #Iterate through list of nodes
+    for node in nodes: 
         #Ensure z axis is 0 (2d Map)
-        point.z = 0
-        gridcells.cells.append(point)
+        node.point.z = 0
+        gridcells.cells.append(node.point)
     
     publisher.publish(gridcells)
     
@@ -89,6 +118,9 @@ if __name__ == '__main__':
     global odom_list
     global Map_Cell_Width
     global Map_Cell_Height
+    global pub_explored 
+    global pub_start    
+    global pub_end
 
     Map_Cell_Width = 0.2
     Map_Cell_Height = 0.2
@@ -110,12 +142,12 @@ if __name__ == '__main__':
     print "Starting Lab 3"
     
     # Hardcoded start and end points: 
-    start  = Point(-1, -1, 0)
-    end    = Point(1.4, 1.4, 0)
+    start  = AStarNode(-1, -1)
+    end    = AStarNode(1.4, -1)
     PublishGridCells(pub_start, [start])
     PublishGridCells(pub_end, [end])
     
-    run_Astar(start, end)
+    AStar_search(start, end)
     
     
     print "Lab 3 complete!"
