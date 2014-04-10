@@ -29,7 +29,8 @@ def AStar_search(start, end):
         current = min(FrontierSet, key=lambda o:o.g + o.h)
         
         #If the goal is being expanded
-        if current == end:
+        if current.poseEqual(end):
+            print 'poseisequal to end'
             #Construct path
             path = []
             while current.parent:
@@ -79,6 +80,9 @@ class AStarNode():
         self.g = 0
         self.h = 0
         self.parent = None
+        
+    def poseEqual(self, node):
+        return node.point.x == self.point.x and node.point.y == self.point.y 
    
 #Publish Explored Cells function
 def PublishGridCells(publisher, nodes):
@@ -88,13 +92,16 @@ def PublishGridCells(publisher, nodes):
     gridcells.header.frame_id = 'map'
     gridcells.cell_width = Map_Cell_Width
     gridcells.cell_height = Map_Cell_Height
-    
+
     #Iterate through list of nodes
     for node in nodes: 
+        print 'Iterating ' + str(node.point.x) + str(node.point.y)
+        point = Point()
+        point.x = node.point.x
+        point.y = node.point.y
         #Ensure z axis is 0 (2d Map)
-        node.point.z = 0
-        gridcells.cells.append(node.point)
-    
+        point.z = node.point.z = 0
+        gridcells.cells.append(point)
     publisher.publish(gridcells)
     
 
@@ -185,59 +192,59 @@ def set_goal_pose (msg):
 #######################################
 # This is the program's main function
 if __name__ == '__main__':
-
+    
     # Change this node name to include your username
-	rospy.init_node('rbansal_vcunha_dbourque_Lab3Node')
+    rospy.init_node('rbansal_vcunha_dbourque_Lab3Node')
     
     
     # These are global variables. Write "global <variable_name>" in any other function
     #  to gain access to these global variables
     
-	global pub_explored
-	global pose
-	global odom_tf
-	global odom_list
-	global Map_Cell_Width
-	global Map_Cell_Height
-
-	global start_pos_x
-	global start_pos_y
-	#global start_pos_z
-	#global start_orient_x
-	#global start_orient_y
-	#global start_orient_z
-	#globalstart_w
-	global goal_pos_x
-	global goal_pos_y
-	#global goal_pos_z
-	#global goal_orient_x
-	#global goal_orient_y
-	#global goal_orient_z
-	#global goal_w
-
-	Map_Cell_Width = 0.2
-	Map_Cell_Height = 0.2
+    global pub_explored
+    global pose
+    global odom_tf
+    global odom_list
+    global Map_Cell_Width
+    global Map_Cell_Height
     
+    global start_pos_x
+    global start_pos_y
+    #global start_pos_z
+    #global start_orient_x
+    #global start_orient_y
+    #global start_orient_z
+    #globalstart_w
+    global goal_pos_x
+    global goal_pos_y
+    #global goal_pos_z
+    #global goal_orient_x
+    #global goal_orient_y
+    #global goal_orient_z
+    #global goal_w
     
-	#Publishers: 
-	pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
-	pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
-	pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
-    
+    Map_Cell_Width = 0.2
+    Map_Cell_Height = 0.2
+        
+    #Publishers: 
+    pub_explored = rospy.Publisher('/explored', GridCells) # Publisher explored GridCells
+    pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
+    pub_end      = rospy.Publisher('/end'  , GridCells) # Publisher for End Point
+        
     #Subscribers:
-	sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
-	sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
-	print "Starting Lab 3"
-
-	# Hardcoded start and end points: 
-	start  = AStarNode(-1, -1)
-	end    = AStarNode(1.4, -1)
-	PublishGridCells(pub_start, [start])
-	PublishGridCells(pub_end, [end])
- 
-    #AStar_search(start, end)
+    sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, set_initial_pose, queue_size=1)
+    sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, set_goal_pose, queue_size=1)  
+    print "Starting Lab 3"
+    
+    # Hardcoded start and end points: 
+    start  = AStarNode(-1, -1)
+    end    = AStarNode(1.4, -1)
+    PublishGridCells(pub_start, [start])
+    PublishGridCells(pub_end, [end])
+    
+    AStar_search(start, end)
     
     
-	print "Lab 3 complete!"
-	rospy.spin()
-S
+    print "Lab 3 complete!"
+    rospy.spin()
+    
+    
