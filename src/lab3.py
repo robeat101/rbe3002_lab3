@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import rospy, tf, datetime
+import rospy, tf
 from nav_msgs.msg import GridCells, OccupancyGrid
 from geometry_msgs.msg import Point, PoseWithCovarianceStamped, PoseStamped
 from numpy import ma
@@ -52,12 +52,11 @@ def AStar_search(start, end):
                         ExpandedSet.remove(expanded)
                         break
                 path.append(current)
-                #update gridcells
-                PublishGridCells(pub_explored, ExpandedSet)
-                rospy.sleep(rospy.Duration(0.005,0))
             
-            #Return path (less one garbage node that is appended)
-            rospy.sleep(rospy.Duration(0.05,0))
+            
+            #update gridcells
+            PublishGridCells(pub_explored, ExpandedSet)
+            #Return path (less one garbage node that is appended) 
             return path[::-1]
         
         #Else, move node from frontier to explored
@@ -458,7 +457,7 @@ if __name__ == '__main__':
     #    h_const < 1 -> f(n) becomes heuristic dominant = greedy
     #    h_const > 1 -> f(n) becomes movement cost dominant = optimal search (more time!!)
     #        2 -> seems safe enough
-    h_const = 5
+    h_const = 2
         
     #Publishers: 
     pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
