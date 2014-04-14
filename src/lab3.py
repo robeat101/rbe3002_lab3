@@ -19,7 +19,7 @@ def AStar_search(start, end):
     #Set Start and End values
     start.g = 0
     start.h = heuristic(start, end)
-    rospy.sleep(rospy.Duration(0.5,0))
+    rospy.sleep(rospy.Duration(0.1,0))
     
     #FrontierSet is the set of nodes to be opened, i.e. Frontier
     FrontierSet = set()
@@ -42,17 +42,27 @@ def AStar_search(start, end):
         if current.poseEqual(end):
             #Construct path
             path = []
+            repeatedNode_flag = False
             while current.parent:
                 path.append(current)
                 current = current.parent
+                #remove current node from ExpandedSet
+                for expanded in ExpandedSet:
+                    if current.poseEqual(expanded):
+                        ExpandedSet.remove(expanded)
+                        break
                 path.append(current)
+                #update gridcells
+                PublishGridCells(pub_explored, ExpandedSet)
+                rospy.sleep(rospy.Duration(0.005,0))
             
             #Return path (less one garbage node that is appended)
+            rospy.sleep(rospy.Duration(0.05,0))
             return path[::-1]
         
         #Else, move node from frontier to explored
         FrontierSet.remove(current)
-        if not (current.poseEqual(start) and current.poseEqual(end)):
+        if not (current.poseEqual(start) or current.poseEqual(end)):
             ExpandedSet.add(current)
         
         #Check for possible 8-directional moves
@@ -249,7 +259,7 @@ def PublishGridCells(publisher, nodes):
         point.z = node.point.z = 0
         gridcells.cells.append(point)        
     publisher.publish(gridcells)
-    #rospy.sleep(rospy.Duration(0.005,0))
+    #rospy.sleep(rospy.Duration(0.05,0))
 
 def PublishWayPoints(publisher, nodes):
 	rospy.sleep(rospy.Duration(0.1,0))
@@ -278,7 +288,7 @@ def run_Astar():
     PublishGridCells(pub_path, [])
     
     # Use this command to make the program wait for some seconds
-    rospy.sleep(rospy.Duration(1, 0))
+    rospy.sleep(rospy.Duration(.1, 0))
     
     path = AStar_search(start, end)
     
@@ -448,7 +458,7 @@ if __name__ == '__main__':
     #    h_const < 1 -> f(n) becomes heuristic dominant = greedy
     #    h_const > 1 -> f(n) becomes movement cost dominant = optimal search (more time!!)
     #        2 -> seems safe enough
-    h_const = 3
+    h_const = 5
         
     #Publishers: 
     pub_start    = rospy.Publisher('/start', GridCells) # Publisher for start Point
